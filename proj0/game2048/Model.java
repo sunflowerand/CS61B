@@ -110,13 +110,51 @@ public class Model extends Observable {
         boolean changed;
         changed = false;
 
-        // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
+        this.board.setViewingPerspective(side);
+        for (int col = 0; col < this.board.size(); col++) {
+            boolean isMoved = moveOneColumn(col);
+            if (isMoved) {
+                changed = true;
+            }
+        }
+        this.board.setViewingPerspective(Side.NORTH);
 
         checkGameOver();
         if (changed) {
             setChanged();
+        }
+        return changed;
+    }
+
+    public boolean moveOneColumn(int col) {
+        int NA = -1;
+        boolean changed = false, merged = false;
+        int preValue = NA, preRow = NA, boundary = this.board.size() - 1;
+        for (int row = boundary; row >= 0; row--) {
+            Tile currentTile = this.board.tile(col, row);
+            if (currentTile == null) {
+                continue;
+            }
+            if (preValue == NA) {
+                this.board.move(col, boundary, currentTile);
+                preValue = currentTile.value();
+                preRow = boundary;
+                if (currentTile.row() != preRow) {
+                    changed = true;
+                }
+            } else if (currentTile.value() == preValue && !merged) {
+                this.board.move(col, preRow, currentTile);
+                merged = changed = true;
+                this.score += currentTile.value() * 2;
+            } else {
+                this.board.move(col, preRow - 1, currentTile);
+                merged = false;
+                changed = true;
+                preValue = currentTile.value();
+                preRow = preRow - 1;
+            }
         }
         return changed;
     }
@@ -138,6 +176,13 @@ public class Model extends Observable {
      * */
     public static boolean emptySpaceExists(Board b) {
         // TODO: Fill in this function.
+        for (int row = 0; row <= b.size() - 1; row += 1) {
+            for (int col = 0; col <= b.size() - 1; col += 1) {
+                if (b.tile(row, col) == null) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -148,6 +193,13 @@ public class Model extends Observable {
      */
     public static boolean maxTileExists(Board b) {
         // TODO: Fill in this function.
+        for (int row = 0; row <= b.size() - 1; row += 1) {
+            for (int col = 0; col <= b.size() - 1; col += 1) {
+                if (b.tile(col, row) != null && b.tile(col, row).value() == MAX_PIECE) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
@@ -158,9 +210,27 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
+        if (Model.emptySpaceExists(b)) {
+            return true;
+        }
+        int boardSize = b.size();
+        for (int i = 0; i < boardSize; i++) {
+            for (int j = 0; j < boardSize; j++) {
+                if (surroundSame(b, i, j)) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
+
+    /** Only check right and downside of a tile, because of the order of scan.*/
+    public static boolean surroundSame(Board b, int col, int row) {
+        boolean downSame = col + 1 < b.size() && b.tile(col + 1, row).value() == b.tile(col, row).value();
+        boolean rightSame = row + 1 < b.size() && b.tile(col, row + 1).value() == b.tile(col, row).value();
+        return downSame || rightSame;
+    }
+
 
 
     @Override
